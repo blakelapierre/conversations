@@ -123,7 +123,7 @@ const CLEAR_PARTNERS = (_) => {
 };
 
 const ADD_CHAT_MESSAGE = (_, chat, type, {data}) => {
-  chat.messages.push({type, data, time: new Date().getTime()});
+  chat.messages.unshift({type, data, time: new Date().getTime()});
 };
 
 
@@ -209,10 +209,10 @@ const Conversation = ({conversation: {partner, channels: {chat, issues}}}, {muta
 // jshint ignore:start
 const Chat = ({chat}, {mutation}) => (
   <chat>
-    <Messages messages={chat.messages} />
     <form onSubmit={mutation(SEND_CHAT_MESSAGE, chat)} action="javascript:" autoFocus>
       <input type="text" value={chat.input.message} onInput={mutation(CHAT_MESSAGE_INPUT, chat)} placeholder="Type your chat message here..." />
     </form>
+    <Messages messages={chat.messages} />
   </chat>
 );
 // jshint ignore: end
