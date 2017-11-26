@@ -28,7 +28,7 @@ export default function connect(id, actions) {
 
     handle(socket, id, actions);
 
-    return (partner, actions) => {
+    return (partner, programs, actions) => {
       socket.send(partner);
 
       let peerConnection = new RTCPeerConnection({
@@ -38,16 +38,13 @@ export default function connect(id, actions) {
         iceTransports: 'all'
       });
 
-      const chatDataChannel = peerConnection.createDataChannel('chat');
+      const data = {connection: peerConnection};
+      peerConnections[partner.join(',')] = data;
 
-      peerConnections[partner.join(',')] = {connection: peerConnection, dataChannel: chatDataChannel};
-
-      // chatDataChannel.addEventListener('message', ({data}) => actions['set-partner-data'](partner, JSON.parse(data)));
-      chatDataChannel.addEventListener('open', () => {
-        actions['set-status']('chat open');
-        actions['chat-channel'](partner, chatDataChannel);
+      programs.forEach(program => {
+        const dataChannel = createDataChannel(program, peerConnection, actions);
+        data[`${program}DataChannel`] = dataChannel;
       });
-      chatDataChannel.addEventListener('close', () => actions['set-status']('chat close'));
 
       peerConnection
         .createOffer(
@@ -70,7 +67,18 @@ export default function connect(id, actions) {
 
       peerConnection.addEventListener('connectionstatechange', event => {
         actions['set-status'](event.target.connectionState);
+        if (event.target.connectionState === 'connected') actions['partner-connected'](partner);
       });
+
+      function createDataChannel(name, peerConnection, actions) {
+        const dataChannel = peerConnection.createDataChannel(name);
+
+        dataChannel.addEventListener('open', () => {
+          actions['set-status']('chat open');
+          actions[`${name}-channel`](partner, dataChannel);
+        });
+        dataChannel.addEventListener('close', () => actions['set-status']('chat close'));
+      }
     };
   }
 }
@@ -145,12 +153,18 @@ function handle(socket, id, actions) {
 
     peerConnections[partner] = {connection: peerConnection, partner};
 
+    peerConnection.addEventListener('open', event => {
+      actions['partner-connected'](partner);
+    });
+
     peerConnection.addEventListener('datachannel', event => {
       const {channel} = event;
 
+      console.dir(channel);
+
       peerConnections[partner].dataChannel = channel;
 
-      actions['chat-channel'](partner, channel);
+      actions[`${channel.label}-channel`](partner, channel);
     });
 
     peerConnection
@@ -171,6 +185,11 @@ function handle(socket, id, actions) {
         if (!readingPartner) socket.send(partner);
         socket.send(JSON.stringify(candidate));
       }
+    });
+
+    peerConnection.addEventListener('connectionstatechange', event => {
+      actions['set-status'](event.target.connectionState);
+      if (event.target.connectionState === 'connected') actions['partner-connected'](partner);
     });
   }
 
