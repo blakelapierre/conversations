@@ -1,16 +1,16 @@
-function updateState(state) {
-  for (let partner in peerConnections) sendState(partner, state);
-}
+// function updateState(state) {
+//   for (let partner in peerConnections) sendState(partner, state);
+// }
 
-function sendState(partner, state) {
-  const {dataChannel} = peerConnections[partner];
-  try {
-    dataChannel.send(stringifyState(state));
-  }
-  catch (e) {
-    console.log(`Error sending to ${partner}`, e);
-  }
-}
+// function sendState(partner, state) {
+//   const {dataChannel} = peerConnections[partner];
+//   try {
+//     dataChannel.send(stringifyState(state));
+//   }
+//   catch (e) {
+//     console.log(`Error sending to ${partner}`, e);
+//   }
+// }
 
 const SIGNALER_IP = '192.168.0.105',
       SIGNALER_PORT = 8080;
@@ -45,7 +45,7 @@ export default function connect(id, actions) {
       // chatDataChannel.addEventListener('message', ({data}) => actions['set-partner-data'](partner, JSON.parse(data)));
       chatDataChannel.addEventListener('open', () => {
         actions['set-status']('chat open');
-        actions['chat-channel'](chatDataChannel);
+        actions['chat-channel'](partner, chatDataChannel);
       });
       chatDataChannel.addEventListener('close', () => actions['set-status']('chat close'));
 
@@ -150,7 +150,7 @@ function handle(socket, id, actions) {
 
       peerConnections[partner].dataChannel = channel;
 
-      actions['chat-channel'](channel);
+      actions['chat-channel'](partner, channel);
     });
 
     peerConnection

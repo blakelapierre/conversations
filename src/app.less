@@ -24,9 +24,46 @@ conversations {
   }
 
   conversation {
-    display: block;
+    display: flex;
+    flex-direction: column;
 
     width: 30vw;
+
+    border: solid 1px #999;
+
+    partner-id {
+      flex: 1 1 auto;
+
+      border-bottom: solid 1px #999;
+    }
+
+    message {
+      display: flex;
+      flex-direction: column;
+
+      time {
+        color: #555;
+
+        font-size: 0.55em;
+      }
+
+      data {
+
+      }
+    }
+
+    form {
+      flex: 1 1 auto;
+
+      display: flex;
+
+      input {
+        flex: 1 1 auto;
+
+        border: none;
+        border-top: solid 1px #999;
+      }
+    }
 
     .self {
 

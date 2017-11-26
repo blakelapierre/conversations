@@ -85,9 +85,9 @@ const CONNECT_TO_INPUT = (_, {target: {value}}) => {
   _.input.connectTo = value;
 };
 
-const CHAT_CHANNEL = (_, mutation, channel) => {
-  const conversation = {channel, messages: [], input: {message: undefined}};
-  conversation.messages.push(conversation);
+const CHAT_CHANNEL = (_, mutation, partner, channel) => {
+  const conversation = {partner, channel, messages: [], input: {message: undefined}};
+
   _.conversations.push(conversation);
 
   channel.addEventListener('message', mutation(ADD_CHAT_MESSAGE, conversation, 'partner'));
@@ -102,7 +102,7 @@ const PARTNER_MESSAGE = (_, [partner, message]) => {
     saveState({currentId: _.signaler.currentId, partners: _.partners});
   }
 
-  ADD_LOG_MESSAGE(_, `${partner.slice(0, 3).toString()}..${partner.slice(partner.length - 4, partner.length - 1).toString()}: ${JSON.stringify(message)}`);
+  ADD_LOG_MESSAGE(_, `${renderShortID(partner)}: ${JSON.stringify(message)}`);
 };
 
 const CLEAR_PARTNERS = (_) => {
@@ -111,11 +111,12 @@ const CLEAR_PARTNERS = (_) => {
 };
 
 const ADD_CHAT_MESSAGE = (_, conversation, type, {data}) => {
-  conversation.messages.push({type, data});
+  conversation.messages.push({type, data, time: new Date().getTime()});
 };
 
 
 const SEND_CHAT_MESSAGE = (_, conversation) => {
+  console.log('send');
   const {message} = conversation.input;
 
   ADD_CHAT_MESSAGE(_, conversation, 'self', {data: message});
@@ -135,8 +136,15 @@ const ADD_LOG_MESSAGE = ({log}, message) => {
 const Conversation = ({conversation}, {mutation}) => (
   // jshint ignore:start
   <conversation>
-    {conversation.messages.map(({type, data}) => <div className={type}>{data}</div>)}
-
+    <partner-id>{renderShortID(conversation.partner)}</partner-id>
+    <messages>
+      {conversation.messages.map(({type, data, time}) => (
+        <message className={type}>
+          <data>{data}</data>
+          <time>{new Date(time).toString()}</time>
+        </message>
+      ))}
+    </messages>
     <form onSubmit={mutation(SEND_CHAT_MESSAGE, conversation)} action="javascript:" autoFocus>
       <input type="text" value={conversation.input.message} onInput={mutation(CHAT_MESSAGE_INPUT, conversation)} />
     </form>
@@ -212,4 +220,8 @@ function stringifyState(state) {
     }
     return v;
   });
+}
+
+function renderShortID(id) {
+  return `${id.slice(0, 3).toString()}..${id.slice(id.length - 4, id.length - 1).toString()}`;
 }
