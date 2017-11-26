@@ -10,7 +10,7 @@ body {
   padding: 0;
 }
 
-conversations {
+App {
   overflow-y: auto;
 
   id {
@@ -25,74 +25,121 @@ conversations {
     }
   }
 
-  conversation {
+  conversations {
     display: flex;
-    flex-direction: column;
 
-    width: 30vw;
+    conversation {
+      flex: 0 0 auto;
 
-    border: solid 1px #999;
-
-    partner-id {
-      flex: 1 1 auto;
-
-      border-bottom: solid 1px #999;
-    }
-
-    chat {
-      display: block;
-
-      messages {
-        display: block;
-
-        max-height: 40vh;
-        overflow-y: auto;
-      }
-
-    }
-
-    issues {
-      display: block;
-      max-height: 30vh;
-
-      border: solid 1px #900;
-    }
-
-    message {
       display: flex;
       flex-direction: column;
 
-      time {
-        color: #555;
+      width: 30vw;
 
-        font-size: 0.55em;
-      }
+      border: solid 1px #999;
 
-      data {
+      partner-id {
+        flex: 0 1 auto;
 
-      }
-    }
-
-    form {
-      flex: 1 1 auto;
-
-      display: flex;
-
-      input {
-        flex: 1 1 auto;
-
-        border: none;
-        border-top: solid 1px #999;
         border-bottom: solid 1px #999;
       }
-    }
 
-    .self {
+      channels {
+        flex: 1 1 auto;
 
-    }
+        display: flex;
+        flex-direction: column;
 
-    .partner {
-      text-align: right;
+        chat {
+          display: block;
+
+          messages {
+            display: block;
+
+            max-height: 40vh;
+            overflow-y: auto;
+          }
+
+        }
+
+        issues {
+          flex: 1 0 auto;
+
+          display: block;
+          max-height: 30vh;
+
+          border: solid 1px #900;
+
+          issue-list {
+            display: flex;
+
+            issue-id {
+              display: block;
+              width: 1em;
+
+              margin: 0.1em;
+
+              text-align: center;
+              border: solid 1px #999;
+
+              cursor: pointer;
+
+              &.shown {
+                background-color: #999;
+              }
+            }
+          }
+
+          issue-detail {
+            flex: 1 0 auto;
+
+            display: block;
+          }
+
+          issue-input {
+            flex: 1 0 auto;
+
+            display: block;
+          }
+        }
+
+        message {
+          display: flex;
+          flex-direction: column;
+
+          time {
+            color: #555;
+
+            font-size: 0.55em;
+          }
+
+          data {
+
+          }
+        }
+
+        form {
+          flex: 1 1 auto;
+
+          display: flex;
+
+          input {
+            flex: 1 1 auto;
+
+            border: none;
+            border-top: solid 1px #999;
+            border-bottom: solid 1px #999;
+          }
+        }
+
+        .self {
+
+        }
+
+        .partner {
+          text-align: right;
+        }
+      }
     }
   }
 }

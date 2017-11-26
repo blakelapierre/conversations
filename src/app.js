@@ -48,13 +48,20 @@ let connectTo;
 const START = (_, mutation) => {
   mutation(STARTED)();
 
-  connectTo = server(_.signaler.currentId, {
-    'set-signaler-status': mutation(SET_SIGNALER_STATUS),
+  connectTo = server(_.signaler.currentId, createActions(mutation));
+};
+
+function createActions(mutation) {
+  return {
+    'set-status': status => console.log('status', status),
+    'set-signaler-status': status => console.log('signaler status', status),
+    'set-partner-data': data => console.log('data', data),
+    'partner-connected': mutation(PARTNER_CONNECTED),
     'chat-channel': mutation(CHAT_CHANNEL, mutation),
     'issues-channel': mutation(ISSUES_CHANNEL, mutation),
     'partner-message': mutation(PARTNER_MESSAGE)
-  });
-};
+  };
+}
 
 const STARTED = _ => {
   _.status.started = true;
@@ -70,14 +77,7 @@ const CONNECT_TO =
 
 const CONNECT_TO_PARTNER =
   (_, name, mutation) =>
-    connectTo(new Uint8Array(name.split(',').map(n => parseInt(n, 10))), ['chat', 'issues'], {
-      'set-status': status => console.log('status', status),
-      'set-partner-data': data => console.log('data', data),
-      'partner-connected': mutation(PARTNER_CONNECTED),
-      'chat-channel': mutation(CHAT_CHANNEL, mutation),
-      'issues-channel': mutation(ISSUES_CHANNEL, mutation),
-      'partner-message': mutation(PARTNER_MESSAGE)
-    }, undefined);
+    connectTo(new Uint8Array(name.split(',').map(n => parseInt(n, 10))), ['chat', 'issues'], createActions(mutation), undefined);
 
 const CONNECT_TO_INPUT = (_, {target: {value}}) => {
   _.input.connectTo = value;
@@ -87,20 +87,18 @@ const PARTNER_CONNECTED = (_, partner) => {
   console.log('partner connected!');
 };
 
-const CHAT_CHANNEL = (_, mutation, partner, channel) => {
-  const chat = {partner, channel, messages: [], input: {message: undefined}};
+function createChannelHandler(name, handler, contextCreator) {
+  return (_, mutation, partner, channel) => {
+    const context = contextCreator(partner, channel);
 
-  _.conversations[partner.toString()].channels['chat'] = chat;
+    _.conversations[partner.toString()].channels[name] = context;
 
-  channel.addEventListener('message', mutation(ADD_CHAT_MESSAGE, chat, 'partner'));
-};
+    channel.addEventListener('message', mutation(handler, context, 'partner'));
+  };
+}
 
-const ISSUES_CHANNEL = (_, mutation, partner, channel) => {
-  const issue = {partner, channel, issues: [], messages: [], input: {message: undefined}};
-
-  _.conversations[partner.toString()].channels['issues'] = issue;
-
-  channel.addEventListener('message', mutation(PROCESS_ISSUE_MESSAGE, issue, 'partner'));
+const ADD_CHAT_MESSAGE = (_, chat, type, {data}) => {
+  chat.messages.unshift({type, data, time: new Date().getTime()});
 };
 
 const PARTNER_MESSAGE = (_, [partner, message]) => {
@@ -120,10 +118,6 @@ const PARTNER_MESSAGE = (_, [partner, message]) => {
 const CLEAR_PARTNERS = (_) => {
   _.partners = {};
   saveState({currentId: _.signaler.currentId, partners: _.partners});
-};
-
-const ADD_CHAT_MESSAGE = (_, chat, type, {data}) => {
-  chat.messages.unshift({type, data, time: new Date().getTime()});
 };
 
 
@@ -164,18 +158,31 @@ const ADD_ISSUE = (_, issues, type, data) => {
 
   issues.messages.push(issue);
   issues.issues.push(issue);
+
+  SHOW_ISSUE(_, issues, issue);
 };
 
 const ISSUES_MESSAGE_INPUT = (_, issues, {target: {value}}) => {
   issues.input.message = value;
 };
 
+const SHOW_ISSUE = (_, issues, issue) => {
+  issues.issueDetail = issue;
+};
+
+const CHAT_CHANNEL = createChannelHandler('chat', ADD_CHAT_MESSAGE, (partner, channel) => ({partner, channel, messages: [], input: {message: undefined}}));
+
+const ISSUES_CHANNEL = createChannelHandler('issues', PROCESS_ISSUE_MESSAGE, (partner, channel) => ({partner, channel, issues: [], messages: [], input: {message: undefined}}));
+
+
 // jshint ignore:start
-const Conversations = ({status: {started}, signaler, conversations, issues}, {mutation}) => (
-  <conversations>
+const App = ({status: {started}, signaler, conversations, issues}, {mutation}) => (
+  <app>
     {!started ? mutation(START)(mutation) : undefined}
 
-    {Object.values(conversations).map(c => <Conversation conversation={c} />)}
+    <conversations>
+      {Object.values(conversations).map(c => <Conversation conversation={c} />)}
+    </conversations>
 
     <div>
       <form onSubmit={mutation(CONNECT_TO, mutation)} action="javascript:" autoFocus>
@@ -190,7 +197,7 @@ const Conversations = ({status: {started}, signaler, conversations, issues}, {mu
     </div>
 
     <Console />
-  </conversations>
+  </app>
 );
 // jshint ignore:end
 
@@ -223,8 +230,11 @@ const Issues = ({issues}, {mutation}) => (
   <issues>
     <div>Issues</div>
     <issue-list>
-      {issues.issues.map(i => <Issue issue={i} />)}
+      {issues.issues.map(issue => <issue-id onClick={mutation(SHOW_ISSUE, issues, issue)} className={{'shown': issue === issues.issueDetail}}>{issue.id}</issue-id>)}
     </issue-list>
+    <issue-detail>
+      {issues.issueDetail ? <Issue issue={issues.issueDetail} /> : undefined}
+    </issue-detail>
     <issue-input>
       <form onSubmit={mutation(NEW_ISSUE, issues)} action="javascript:" autoFocus>
         <input type="text" value={issues.input.message} onInput={mutation(ISSUES_MESSAGE_INPUT, issues)} placeholder="Type your issue here..." />
@@ -238,7 +248,6 @@ const Issues = ({issues}, {mutation}) => (
 // jshint ignore:start
 const Issue = ({issue: {id, messages}}) => (
   <issue>
-    <issue-id>{id}</issue-id>
     <messages>
       {messages.map(({message}) => (
         <message>
@@ -296,7 +305,7 @@ const Console = (_, {log = []}) => (
 
 render(
   // jshint ignore:start
-  Conversations, state, document.body
+  App, state, document.body
   // jshint ignore:end
 );
 
