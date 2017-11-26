@@ -17,9 +17,9 @@ const SIGNALER_IP = '192.168.0.105',
 
 /*
 actions:
-  got-id,
   set-signaler-status,
-  chat-channel
+  chat-channel,
+  partner-message
 */
 export default function connect(id, actions) {
   if (WebSocket && window.crypto) {
@@ -27,6 +27,51 @@ export default function connect(id, actions) {
     const socket = new WebSocket(`ws://${SIGNALER_IP}:${SIGNALER_PORT}`);
 
     handle(socket, id, actions);
+
+    return (partner, actions) => {
+      socket.send(partner);
+
+      let peerConnection = new RTCPeerConnection({
+        iceServers: [
+          {urls: 'stun:stun.stunprotocol.org'}
+        ],
+        iceTransports: 'all'
+      });
+
+      const chatDataChannel = peerConnection.createDataChannel('chat');
+
+      peerConnections[partner.join(',')] = {connection: peerConnection, dataChannel: chatDataChannel};
+
+      // chatDataChannel.addEventListener('message', ({data}) => actions['set-partner-data'](partner, JSON.parse(data)));
+      chatDataChannel.addEventListener('open', () => {
+        actions['set-status']('chat open');
+        actions['chat-channel'](chatDataChannel);
+      });
+      chatDataChannel.addEventListener('close', () => actions['set-status']('chat close'));
+
+      peerConnection
+        .createOffer(
+          offer => peerConnection.setLocalDescription(offer).then(() => socket.send(JSON.stringify(offer))),
+          error => console.log('error', error));
+
+      peerConnection.addEventListener('icecandidate', ({candidate}) => {
+        if (candidate) {
+          socket.send(JSON.stringify(candidate));
+        }
+      });
+
+      peerConnection.addEventListener('iceconnectionstatechange', event => {
+        actions['set-status'](event.target.iceConnectionState);
+      });
+
+      peerConnection.addEventListener('icegatheringstatechange', event => {
+        actions['set-status'](event.target.iceGatheringState);
+      });
+
+      peerConnection.addEventListener('connectionstatechange', event => {
+        actions['set-status'](event.target.connectionState);
+      });
+    };
   }
 }
 
@@ -77,9 +122,11 @@ function handle(socket, id, actions) {
 
     const message = JSON.parse(data);
 
+    actions['partner-message']([partner, message]);
+
     switch (message.type) {
       case 'offer': receiveOffer(partner, message); break;
-      case 'answer': recieveAnswer(partner, message); break;
+      case 'answer': receiveAnswer(partner, message); break;
       default: receiveCandidate(partner, message); break;
     }
 
@@ -96,30 +143,14 @@ function handle(socket, id, actions) {
       iceTransports: 'all'
     });
 
-    peerConnections[partner] = {connection: peerConnection};
-
-    console.log({peerConnections});
+    peerConnections[partner] = {connection: peerConnection, partner};
 
     peerConnection.addEventListener('datachannel', event => {
-      console.log('datachannel');
       const {channel} = event;
 
       peerConnections[partner].dataChannel = channel;
 
       actions['chat-channel'](channel);
-
-      console.log('datachannel open', event);
-      channel.send(stringifyState(state));
-      // channel.addEventListener('open', event => {
-      // });
-
-      // channel.addEventListener('message', event => {
-      //   const message = JSON.parse(event.data);
-
-      //   if (message.meal !== undefined) {
-      //     actions['add-meal-to-plan'](message.meal);
-      //   }
-      // });
     });
 
     peerConnection
@@ -141,6 +172,11 @@ function handle(socket, id, actions) {
         socket.send(JSON.stringify(candidate));
       }
     });
+  }
+
+  function receiveAnswer(partner, message) {
+    const {connection} = peerConnections[partner];
+    connection.setRemoteDescription(message);
   }
 
   function receiveCandidate(partner, candidate) {

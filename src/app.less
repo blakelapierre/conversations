@@ -14,4 +14,26 @@ conversations {
   id {
     font-size: 0.7em;
   }
+
+  li {
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  conversation {
+    display: block;
+
+    width: 30vw;
+
+    .self {
+
+    }
+
+    .partner {
+      text-align: right;
+    }
+  }
 }

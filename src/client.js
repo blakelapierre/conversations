@@ -108,6 +108,8 @@ export default function connectTo(partner, actions, context) {
 
       const message = JSON.parse(data);
 
+      actions['partner-message']([partner, message]);
+
       switch (message.type) {
         case 'offer': receiveOffer(partner, message); break;
         case 'answer': receiveAnswer(partner, message); break;
