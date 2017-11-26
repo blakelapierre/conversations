@@ -1,139 +1,161 @@
 import { h, render } from 'preact-cycle';
 
-const ADD_TRACKER_ITEM = ({
-  // jshint ignore:start
-  tracker: {
-    items,
-    inputText,
-    ...trackerProps
-  }, ...props
-}) => ({
-  tracker: {
-    items: items.concat(inputText),
-    inputText: '',
-    ...trackerProps
-  }, ...props
-  // jshint ignore:end
-});
+import server from './server';
 
-const SET_TRACKER_TEXT = ({
-  // jshint ignore:start
-  tracker: {
-    inputText,
-    ...trackerProps
-  },
-  ...props
-}, event) => ({
-  tracker: {
-    inputText: event.target.value,
-    ...trackerProps
-  },
-  ...props
-  // jshint ignore:end
-});
+import client from './client';
 
-const fromEvent = (prev, event) => event.target.value;
+const state = getState();
 
-const Tracker = ({tracker:{items, inputText}}, {mutation}) => (
-  // jshint ignore:start
-  <tracker>
-    {items.map(item => <item>{item}</item>)}
-    <TrackerInput inputText={inputText} />
-  </tracker>
-  // jshint ignore:end
-);
+function getState() {
+  let state = localStorage.getItem('state');
+  if (state) return JSON.parse(state, (k, v) => {
+    if (k === 'currentId') return new Uint8Array(v);
+    return v;
+  });
 
-const TrackerInput = ({inputText}, {mutation}) => (
+  state = {
+    status: {
+      started: false
+    },
+    signaler: {
+      currentId: new Uint8Array(64),
+      status: 'Not Connected'
+    },
+    input: {
+      connectTo: undefined,
+      message: undefined
+    },
+    conversations: []
+  };
+
+  const id = new Uint8Array(64);
+
+  window.crypto.getRandomValues(state.signaler.currentId);
+
+  state.currentId = id;
+
+  saveState(state);
+
+  return state;
+}
+
+function saveState(state) {
+  localStorage.setItem('state', stringifyState(state));
+  console.log(state);
+}
+
+
+const START = (_, mutation) => {
+  mutation(STARTED)();
+
+  server(_.signaler.currentId, {
+    'set-signaler-status': mutation(SET_SIGNALER_STATUS),
+    'chat-channel': mutation(SERVER_CHAT_CHANNEL, mutation)
+  });
+};
+
+const STARTED = _ => {
+  console.log('started');
+  _.status.started = true;
+};
+
+const SET_SIGNALER_STATUS = (_, status) => {
+  _.signaler.status = status;
+};
+
+const CONNECT_TO = (_, mutation) => {
+  client(new Uint8Array(_.input.connectTo.split(',').map(n => parseInt(n, 10))), {
+    'set-status': status => console.log('status', status),
+    'set-partner-data': data => console.log('data', data),
+    'chat-channel': mutation(CLIENT_CHAT_CHANNEL, mutation)
+  }, undefined);
+};
+
+const CONNECT_TO_INPUT = (_, {target: {value}}) => {
+  _.input.connectTo = value;
+};
+
+const SERVER_CHAT_CHANNEL = (_, mutation, channel) => {
+  console.log('server chat channel');
+  const conversation = {channel, messages: [], input: {message: undefined}};
+  conversation.messages.push(conversation);
+  _.conversations.push(conversation);
+
+  channel.addEventListener('message', mutation(ADD_SERVER_CHAT_MESSAGE, conversation));
+};
+
+const CLIENT_CHAT_CHANNEL = (_, mutation, channel) => {
+  const conversation = {channel, messages: [], input: {message: undefined}};
+  conversation.messages.push(conversation);
+  _.conversations.push(conversation);
+
+  channel.addEventListener('message', mutation(ADD_CLIENT_CHAT_MESSAGE, conversation));
+};
+
+const ADD_SERVER_CHAT_MESSAGE = (_, conversation, {data}) => {
+  console.log('server', data, conversation);
+  conversation.messages.push(data);
+};
+
+const ADD_CLIENT_CHAT_MESSAGE = (_, conversation, {data}) => {
+  console.log('client', data, conversation);
+  conversation.messages.push(data);
+};
+
+const SEND_CHAT_MESSAGE = (_, conversation) => {
+  conversation.channel.send(conversation.input.message);
+  conversation.input.message = '';
+};
+
+const CHAT_MESSAGE_INPUT = (_, conversation, {target:{value}}) => {
+  conversation.input.message = value;
+};
+
+const Conversation = ({conversation}, {mutation}) => (
   // jshint ignore:start
-  <tracker-input>
-    <form onSubmit={mutation(ADD_TRACKER_ITEM)} action="javascript:">
-      <input placeholder="New item..." value={inputText} onInput={mutation(SET_TRACKER_TEXT)} autoFocus />
+  <conversation>
+    {conversation.messages.map(message => <div>{message}</div>)}
+
+    <form onSubmit={mutation(SEND_CHAT_MESSAGE, conversation)} action="javascript:" autoFocus>
+      <input type="text" value={conversation.input.message} onInput={mutation(CHAT_MESSAGE_INPUT, conversation)} />
     </form>
-  </tracker-input>
-  // jshint ignore:end
+  </conversation>
+  // jshint ignore: end
 );
 
-const Info = ({items}, {info: {metrics}}) => (
+const Conversations = ({status: {started}, signaler, conversations}, {mutation}) => (
   // jshint ignore:start
-  <info>
-    <headers>
-      {metrics.map(metric => <Metric metric={metric} />)}
-    </headers>
-    <bars>
-      {metrics.map(metric => <Bar value={Math.random() * 100} />)}
-    </bars>
-  </info>
-  // jshint ignore:end
-);
+  <conversations>
+    {!started ? mutation(START)(mutation) : undefined}
 
-const Metric = ({metric: {name, units}}) => (
-  // jshint ignore:start
-  <metric>{name} ({units[0]})</metric>
-  // jshint ignore:end
-);
+    {conversations.map(c => <Conversation conversation={c} />)}
+      {console.log('c', conversations)}
 
-const Bar = ({value}) => (
-  // jshint ignore:start
-  <bar style={{'height': `${value}%`}}>bar</bar>
-  // jshint ignore:end
-);
+    <div>
+      <form onSubmit={mutation(CONNECT_TO, mutation)} action="javascript:" autoFocus>
+        Connect To: <input type="text" onInput={mutation(CONNECT_TO_INPUT)} />
+      </form>
+    </div>
 
-const SideBySide = ({tracker, info}) => (
-  // jshint ignore:start
-  <side-by-side>
-    <Tracker tracker={tracker} />
-    <Info info={info} />
-  </side-by-side>
+    <div>
+      Your ID: <id>{signaler.currentId.toString()}</id>
+    </div>
+  </conversations>
   // jshint ignore:end
 );
 
 render(
   // jshint ignore:start
-  SideBySide, {
-    tracker: {items: [], text: ''},
-    info: {
-      items: [],
-      metrics: [{
-        name: 'Calories',
-        units: ['kcal']
-      },{
-        name: 'Saturated Fat',
-        units: ['g'],
-        group: 'Total Fat'
-      },{
-        name: 'Trans Fat',
-        units: ['g']
-      },{
-        name: 'Monounsaturated Fat',
-        units: ['g'],
-        group: 'Unsaturated Fat'
-      },{
-        name: 'Polyunsaturated Fat',
-        units: ['g'],
-        group: 'Unsaturated Fat'
-      },{
-        name: 'Sugars',
-        units: ['g']
-      },{
-        name: 'Soluble Fiber',
-        units: ['g']
-      },{
-        name: 'Insoluble Fiber',
-        units: ['g']
-      },{
-        name: 'Other Carbohydrates',
-        units: ['g']
-      },{
-        name: 'Protein',
-        units: ['g']
-      },{
-        name: 'Sodium',
-        units: ['mg']
-      },{
-        name: 'Potassium',
-        units: ['mg']
-      }]
-    },
-  }, document.body
+  Conversations, state, document.body
   // jshint ignore:end
 );
+
+
+function stringifyState(state) {
+  return JSON.stringify(state, (k, v) => {
+    if (v instanceof Uint8Array) {
+      return Array.from(v);
+    }
+    return v;
+  });
+}
