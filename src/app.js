@@ -122,35 +122,52 @@ const CLEAR_PARTNERS = (_) => {
   saveState({currentId: _.signaler.currentId, partners: _.partners});
 };
 
-const ADD_CHAT_MESSAGE = (_, conversation, type, {data}) => {
-  conversation.messages.push({type, data, time: new Date().getTime()});
+const ADD_CHAT_MESSAGE = (_, chat, type, {data}) => {
+  chat.messages.push({type, data, time: new Date().getTime()});
 };
 
 
-const SEND_CHAT_MESSAGE = (_, conversation) => {
+const SEND_CHAT_MESSAGE = (_, chat) => {
   console.log('send');
-  const {message} = conversation.input;
+  const {message} = chat.input;
 
-  ADD_CHAT_MESSAGE(_, conversation, 'self', {data: message});
+  ADD_CHAT_MESSAGE(_, chat, 'self', {data: message});
 
-  conversation.channel.send(message);
-  conversation.input.message = '';
+  chat.channel.send(message);
+  chat.input.message = '';
 };
 
-const CHAT_MESSAGE_INPUT = (_, conversation, {target:{value}}) => {
-  conversation.input.message = value;
+const CHAT_MESSAGE_INPUT = (_, chat, {target:{value}}) => {
+  chat.input.message = value;
 };
 
 const ADD_LOG_MESSAGE = ({log}, message) => {
   log.unshift(message);
 };
 
-const PROCESS_ISSUE_MESSAGE = (_, issue, type, message) => {
-  issue.messages.push(message);
+const PROCESS_ISSUE_MESSAGE = (_, issue, type, {data}) => {
+  ADD_ISSUE(_, issue, 'partner', JSON.parse(data));
 };
 
-const NEW_ISSUE = (_, $) => {
+const NEW_ISSUE = (_, issues) => {
+  const {message} = issues.input,
+        data = {time: new Date().getTime(), message, creator: _.signaler.currentId.toString()};
 
+  ADD_ISSUE(_, issues, 'self', data);
+
+  issues.channel.send(JSON.stringify(data));
+  issues.input.message = '';
+};
+
+const ADD_ISSUE = (_, issues, type, data) => {
+  const issue = {id: issues.issues.length + 1, messages: [data]};
+
+  issues.messages.push(issue);
+  issues.issues.push(issue);
+};
+
+const ISSUES_MESSAGE_INPUT = (_, issues, {target: {value}}) => {
+  issues.input.message = value;
 };
 
 // jshint ignore:start
@@ -208,13 +225,30 @@ const Issues = ({issues}, {mutation}) => (
     <issue-list>
       {issues.issues.map(i => <Issue issue={i} />)}
     </issue-list>
-    <issue-controls>
-      <button onClick={mutation(NEW_ISSUE)}>New Issue</button>
-    </issue-controls>
+    <issue-input>
+      <form onSubmit={mutation(NEW_ISSUE, issues)} action="javascript:" autoFocus>
+        <input type="text" value={issues.input.message} onInput={mutation(ISSUES_MESSAGE_INPUT, issues)} placeholder="Type your issue here..." />
+        <button>New Issue</button>
+      </form>
+    </issue-input>
   </issues>
 );
 // jshint ignore:end
 
+// jshint ignore:start
+const Issue = ({issue: {id, messages}}) => (
+  <issue>
+    <issue-id>{id}</issue-id>
+    <messages>
+      {messages.map(({message}) => (
+        <message>
+          {message}
+        </message>
+      ))}
+    </messages>
+  </issue>
+);
+// jshint ignore:end
 
 // jshint ignore:start
 const Messages = ({messages}) => (
@@ -259,18 +293,6 @@ const Console = (_, {log = []}) => (
   </console>
 );
   // jshint ignore:end
-
-// jshint ignore:start
-const Issue = ({issue: {messages}}) => (
-  <issue>
-    {messages.map(({data}) => (
-      <message>
-        {JSON.stringify(data)}
-      </message>
-    ))}
-  </issue>
-);
-// jshint ignore:end
 
 render(
   // jshint ignore:start
