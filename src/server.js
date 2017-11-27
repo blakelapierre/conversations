@@ -57,17 +57,14 @@ export default function connect(id, actions) {
         }
       });
 
-      peerConnection.addEventListener('iceconnectionstatechange', event => {
-        actions['set-status'](event.target.iceConnectionState);
-      });
-
       peerConnection.addEventListener('icegatheringstatechange', event => {
         actions['set-status'](event.target.iceGatheringState);
       });
 
-      peerConnection.addEventListener('connectionstatechange', event => {
-        actions['set-status'](event.target.connectionState);
-        if (event.target.connectionState === 'connected') actions['partner-connected'](partner);
+      peerConnection.addEventListener('iceconnectionstatechange', event => {
+        console.log('sc', event.target.iceConnectionState);
+        actions['set-status'](event.target.iceConnectionState);
+        if (event.target.iceConnectionState == 'connected') actions['partner-connected'](partner);
       });
 
       function createDataChannel(name, peerConnection, actions) {
@@ -153,10 +150,6 @@ function handle(socket, id, actions) {
 
     peerConnections[partner] = {connection: peerConnection, partner};
 
-    peerConnection.addEventListener('open', event => {
-      actions['partner-connected'](partner);
-    });
-
     peerConnection.addEventListener('datachannel', event => {
       const {channel} = event;
 
@@ -187,9 +180,10 @@ function handle(socket, id, actions) {
       }
     });
 
-    peerConnection.addEventListener('connectionstatechange', event => {
-      actions['set-status'](event.target.connectionState);
-      if (event.target.connectionState === 'connected') actions['partner-connected'](partner);
+    peerConnection.addEventListener('iceconnectionstatechange', event => {
+      console.log('sc2', event.target.iceConnectionState);
+      actions['set-status'](event.target.iceConnectionState);
+      if (event.target.iceConnectionState == 'connected') actions['partner-connected'](partner);
     });
   }
 

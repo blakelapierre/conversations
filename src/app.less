@@ -38,10 +38,23 @@ App {
 
       border: solid 1px #999;
 
-      partner-id {
+      partner-info {
         flex: 0 1 auto;
 
-        border-bottom: solid 1px #999;
+        display: flex;
+
+        align-items: flex-end;
+        justify-content: space-between;
+
+        id {
+          flex: 0 1 auto;
+
+          border-bottom: solid 1px #999;
+        }
+
+        connected-at {
+          font-size: 0.55em;
+        }
       }
 
       channels {
@@ -51,19 +64,48 @@ App {
         flex-direction: column;
 
         chat {
+          flex: 1 0 auto;
+
           display: block;
 
           messages {
-            display: block;
+            display: flex;
+            flex-direction: column;
 
             max-height: 40vh;
             overflow-y: auto;
-          }
 
+            message {
+              flex: 0 0 auto;
+
+              display: block;
+
+              padding: 0.2em;
+
+              container {
+                display: inline-block;
+
+                padding: 0.1em;
+
+                border: solid 1px rgba(192, 192, 192, 0.5);
+                border-radius: 2px;
+
+                background-color: rgba(192, 128, 128, 1);
+
+                transition: background-color 0.25s linear;
+
+                data, time {
+                  display: block;
+
+                  word-break: break-word;
+                }
+              }
+            }
+          }
         }
 
         issues {
-          flex: 1 0 auto;
+          flex: 0 0 auto;
 
           display: block;
           max-height: 30vh;
@@ -72,6 +114,7 @@ App {
 
           issue-list {
             display: flex;
+            flex-wrap: wrap;
 
             issue-id {
               display: block;
@@ -143,3 +186,13 @@ App {
     }
   }
 }
+
+.message-time-loop(@transitionPercentage) when (@transitionPercentage >= 0) {
+  .message-time-@{transitionPercentage} {
+    background-color: rgba(192 * (@transitionPercentage / 100), 128, 128 + 128 * (1 - (@transitionPercentage / 100)), 0.5);
+  }
+
+  .message-time-loop(@transitionPercentage - 5);
+}
+
+.message-time-loop(100);
