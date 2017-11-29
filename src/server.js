@@ -51,6 +51,10 @@ export default function connect(id, actions) {
           offer => peerConnection.setLocalDescription(offer).then(() => socket.send(JSON.stringify(offer))),
           error => console.log('error', error));
 
+
+
+
+
       peerConnection.addEventListener('icecandidate', ({candidate}) => {
         if (candidate) {
           socket.send(JSON.stringify(candidate));
@@ -58,23 +62,26 @@ export default function connect(id, actions) {
       });
 
       peerConnection.addEventListener('icegatheringstatechange', event => {
-        actions['set-status'](event.target.iceGatheringState);
+        // actions['set-status'](event.target.iceGatheringState);
       });
 
       peerConnection.addEventListener('iceconnectionstatechange', event => {
-        console.log('sc', event.target.iceConnectionState);
-        actions['set-status'](event.target.iceConnectionState);
-        if (event.target.iceConnectionState == 'connected') actions['partner-connected'](partner);
+        actions['peer']['ice-connection-state'](partner, event.target.iceConnectionState);
+      });
+
+      peerConnection.addEventListener('open', event => {
+        actions['peer']['connection-state'](partner, 'connected');
+      });
+
+      peerConnection.addEventListener('close', event => {
+        actions['peer']['connection-state'](partner, 'closed');
       });
 
       function createDataChannel(name, peerConnection, actions) {
         const dataChannel = peerConnection.createDataChannel(name);
 
-        dataChannel.addEventListener('open', () => {
-          actions['set-status']('chat open');
-          actions[`${name}-channel`](partner, dataChannel);
-        });
-        dataChannel.addEventListener('close', () => actions['set-status']('chat close'));
+        dataChannel.addEventListener('open', () => actions['peer'][`${name}-channel-open`](partner, dataChannel));
+        // dataChannel.addEventListener('close', () => actions[`${name}-channel-close`](partner, dataChannel));
       }
     };
   }
@@ -88,7 +95,7 @@ function handle(socket, id, actions) {
   let partner, readingPartner = false;
 
   socket.addEventListener('open', event => {
-    actions['set-signaler-status']('Connected');
+    actions['signal']['connection-state']('connected');
 
     socket.send(id);
   });
@@ -102,6 +109,7 @@ function handle(socket, id, actions) {
   }
 
   socket.addEventListener('message', event => {
+    console.log(event);
     const {data} = event;
     if (data instanceof Blob) {
       readingPartner = true;
@@ -117,7 +125,7 @@ function handle(socket, id, actions) {
   });
 
   socket.addEventListener('close', () => {
-    actions['set-signaler-status']('Not Connected');
+    actions['signal']['connection-state']('Not Connected');
 
     setTimeout(() => connect(actions), 5000);
   });
@@ -127,7 +135,7 @@ function handle(socket, id, actions) {
 
     const message = JSON.parse(data);
 
-    actions['partner-message']([partner, message]);
+    actions['signal']['partner-message']([partner, message]);
 
     switch (message.type) {
       case 'offer': receiveOffer(partner, message); break;
@@ -157,7 +165,7 @@ function handle(socket, id, actions) {
 
       peerConnections[partner].dataChannel = channel;
 
-      actions[`${channel.label}-channel`](partner, channel);
+      actions['peer'][`${channel.label}-channel-open`](partner, channel);
     });
 
     peerConnection
@@ -181,9 +189,7 @@ function handle(socket, id, actions) {
     });
 
     peerConnection.addEventListener('iceconnectionstatechange', event => {
-      console.log('sc2', event.target.iceConnectionState);
-      actions['set-status'](event.target.iceConnectionState);
-      if (event.target.iceConnectionState == 'connected') actions['partner-connected'](partner);
+      actions['peer']['ice-connection-state'](partner, event.target.iceConnectionState);
     });
   }
 

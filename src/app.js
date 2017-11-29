@@ -54,46 +54,201 @@ const START = (_, mutation) => {
   connectTo = server(_.signaler.currentId, createActions(mutation));
 };
 
+
 function createActions(mutation) {
-  return {
-    'set-status': status => console.log('status', status),
-    'set-signaler-status': status => console.log('signaler status', status),
-    'set-partner-data': data => console.log('data', data),
-    'partner-connected': mutation(PARTNER_CONNECTED),
-    'chat-channel': mutation(CHAT_CHANNEL, mutation),
-    'issues-channel': mutation(ISSUES_CHANNEL, mutation),
-    'partner-message': mutation(PARTNER_MESSAGE)
+  // jshint ignore:start
+  const {
+    SIGNAL_CONNECTION_STATE_CHANGE,
+    PARTNER_MESSAGE,
+
+    ICE_CONNECTION_STATE_CHANGE,
+    ICE_GATHERING_STATE_CHANGE,
+    CHAT_CHANNEL,
+    ISSUES_CHANNEL
+  } = {
+    SIGNAL_CONNECTION_STATE_CHANGE: (_, state) => {
+      _.signaler.connectionState = state;
+    },
+    PARTNER_MESSAGE: (_, [partnerId, message]) => {
+      const id = partnerId.toString();
+
+      let context = _.partners[id];
+
+      console.log('context', context);
+
+      if (context === undefined) {
+        context = _.partners[id] = {
+          id,
+          discoveredAt: new Date().getTime()
+        };
+
+        saveState({currentId: _.signaler.currentId, partners: _.partners});
+      }
+
+      if (!_.conversations[id]) {
+        _.conversations[id] = (_.conversations[id] || {partner: partnerId, context, channels: {}});
+      }
+
+      ADD_LOG_MESSAGE(_, `${renderShortID(partnerId)}: ${JSON.stringify(message)}`);
+    },
+
+    ICE_CONNECTION_STATE_CHANGE: (_, partner, iceConnectionState) => {
+      const id = partner.toString(),
+            context = _.partners[id];
+
+      if (iceConnectionState === 'connected') {
+        (context.connectedAt = context.connectedAt || []).unshift(new Date().getTime());
+      }
+      else if (iceConnectionState === 'closed') {
+        context.closedAt = new Date().getTime();
+      }
+      else if (iceConnectionState === 'disconnected') {
+        (context.disconnectedAt = context.disconnectedAt || []).unshift(new Date().getTime());
+      }
+
+      console.log(context);
+
+      context.iceConnectionState = iceConnectionState;
+    },
+
+    ICE_GATHERING_STATE_CHANGE: (_, partner, iceGatheringState) => {
+      const id = partner.toString(),
+            context = _.partners[id];
+
+      context.iceGatheringState = iceGatheringState;
+    },
+
+    CHAT_CHANNEL: createChannelHandler('chat', ADD_CHAT_MESSAGE, (partner, channel) => ({partner, channel, start: new Date().getTime(), messages: [], input: {message: undefined}})),
+
+    ISSUES_CHANNEL: createChannelHandler('issues', PROCESS_ISSUE_MESSAGE, (partner, channel) => ({partner, channel, issues: [], messages: [], input: {message: undefined}}))
   };
+  // jshint ignore:end
+
+  return actionize({
+    'signal': {
+      'connection-state': [SIGNAL_CONNECTION_STATE_CHANGE],
+      'partner-message': [PARTNER_MESSAGE]
+    },
+    'peer': {
+      'connection-state': [(_, connectionState) => {console.log('***', connectionState);}],
+      'ice-connection-state': [ICE_CONNECTION_STATE_CHANGE],
+      'ice-gathering-state': [ICE_GATHERING_STATE_CHANGE],
+      'chat-channel-open': [CHAT_CHANNEL, mutation],
+      'issues-channel-open': [ISSUES_CHANNEL, mutation]
+    }
+  });
+
+  function actionize(config) {
+    return transform(config, value => transform(value, ([...args]) => mutation(...args)));
+  }
 }
 
-const STARTED = _ => {
-  _.status.started = true;
+function transform(obj, fn) {
+  return Object.keys(obj).reduce((agg, key) => {
+    agg[key] = fn(obj[key], key);
+    return agg;
+  }, {});
+}
+
+// jshint ignore:start
+const {
+  STARTED,
+  SET_SIGNALER_STATUS,
+  CONNECT_TO,
+  CONNECT_TO_PARTNER,
+  CONNECT_TO_INPUT,
+  ADD_CHAT_MESSAGE,
+  CLEAR_PARTNERS,
+  SEND_CHAT_MESSAGE,
+  CHAT_MESSAGE_INPUT,
+  ADD_LOG_MESSAGE,
+  PROCESS_ISSUE_MESSAGE,
+  NEW_ISSUE,
+  ADD_ISSUE,
+  SHOW_ISSUE,
+  ISSUES_MESSAGE_INPUT
+} = {
+  STARTED: _ => {
+    _.status.started = true;
+  },
+
+  SET_SIGNALER_STATUS: (_, status) => {
+    _.signaler.status = status;
+  },
+
+  CONNECT_TO:
+    (_, mutation) =>
+      CONNECT_TO_PARTNER(_, _.input.connectTo, mutation),
+
+  CONNECT_TO_PARTNER:
+    (_, name, mutation) =>
+      connectTo(new Uint8Array(name.split(',').map(n => parseInt(n, 10))), ['chat', 'issues'], createActions(mutation), undefined),
+
+  CONNECT_TO_INPUT: (_, {target: {value}}) => {
+    _.input.connectTo = value;
+  },
+
+  ADD_CHAT_MESSAGE: (_, chat, type, {data}) => {
+    chat.messages.unshift({type, data, time: new Date().getTime()});
+    notificationSound.play();
+  },
+
+  CLEAR_PARTNERS: (_) => {
+    _.partners = {};
+    saveState({currentId: _.signaler.currentId, partners: _.partners});
+  },
+
+  SEND_CHAT_MESSAGE: (_, chat) => {
+    console.log('send');
+    const {message} = chat.input;
+
+    ADD_CHAT_MESSAGE(_, chat, 'self', {data: message});
+
+    chat.channel.send(message);
+    chat.input.message = '';
+  },
+
+  CHAT_MESSAGE_INPUT: (_, chat, {target:{value}}) => {
+    chat.input.message = value;
+  },
+
+  ADD_LOG_MESSAGE: ({log}, message) => {
+    log.unshift(message);
+  },
+
+  PROCESS_ISSUE_MESSAGE: (_, issue, type, {data}) => {
+    ADD_ISSUE(_, issue, 'partner', JSON.parse(data));
+  },
+
+  NEW_ISSUE: (_, issues) => {
+    const {message} = issues.input,
+          data = {time: new Date().getTime(), message, creator: _.signaler.currentId.toString()};
+
+    ADD_ISSUE(_, issues, 'self', data);
+
+    issues.channel.send(JSON.stringify(data));
+    issues.input.message = '';
+  },
+
+  ADD_ISSUE: (_, issues, type, data) => {
+    const issue = {id: issues.issues.length + 1, messages: [data]};
+
+    issues.messages.push(issue);
+    issues.issues.push(issue);
+
+    SHOW_ISSUE(_, issues, issue);
+  },
+
+  ISSUES_MESSAGE_INPUT: (_, issues, {target: {value}}) => {
+    issues.input.message = value;
+  },
+
+  SHOW_ISSUE: (_, issues, issue) => {
+    issues.issueDetail = issue;
+  }
 };
+// jshint ignore:end
 
-const SET_SIGNALER_STATUS = (_, status) => {
-  _.signaler.status = status;
-};
-
-const CONNECT_TO =
-  (_, mutation) =>
-    CONNECT_TO_PARTNER(_, _.input.connectTo, mutation);
-
-const CONNECT_TO_PARTNER =
-  (_, name, mutation) =>
-    connectTo(new Uint8Array(name.split(',').map(n => parseInt(n, 10))), ['chat', 'issues'], createActions(mutation), undefined);
-
-const CONNECT_TO_INPUT = (_, {target: {value}}) => {
-  _.input.connectTo = value;
-};
-
-const PARTNER_CONNECTED = (_, partner) => {
-  console.log('partner connected!');
-  const context = _.partners[partner.toString()];
-
-  context.connectedAt = new Date().getTime();
-
-  console.log(context);
-};
 
 function createChannelHandler(name, handler, contextCreator) {
   return (_, mutation, partner, channel) => {
@@ -104,85 +259,6 @@ function createChannelHandler(name, handler, contextCreator) {
     channel.addEventListener('message', mutation(handler, context, 'partner'));
   };
 }
-
-const ADD_CHAT_MESSAGE = (_, chat, type, {data}) => {
-  chat.messages.unshift({type, data, time: new Date().getTime()});
-  notificationSound.play();
-};
-
-const PARTNER_MESSAGE = (_, [partner, message]) => {
-  if (_.partners[partner.toString()] === undefined) {
-    _.partners[partner.toString()] = {
-      id: partner,
-      discovered: new Date().getTime()
-    };
-
-    saveState({currentId: _.signaler.currentId, partners: _.partners});
-  }
-
-  _.conversations[partner.toString()] = (_.conversations[partner.toString()] || {partner: partner, channels: {}});
-
-  ADD_LOG_MESSAGE(_, `${renderShortID(partner)}: ${JSON.stringify(message)}`);
-};
-
-const CLEAR_PARTNERS = (_) => {
-  _.partners = {};
-  saveState({currentId: _.signaler.currentId, partners: _.partners});
-};
-
-
-const SEND_CHAT_MESSAGE = (_, chat) => {
-  console.log('send');
-  const {message} = chat.input;
-
-  ADD_CHAT_MESSAGE(_, chat, 'self', {data: message});
-
-  chat.channel.send(message);
-  chat.input.message = '';
-};
-
-const CHAT_MESSAGE_INPUT = (_, chat, {target:{value}}) => {
-  chat.input.message = value;
-};
-
-const ADD_LOG_MESSAGE = ({log}, message) => {
-  log.unshift(message);
-};
-
-const PROCESS_ISSUE_MESSAGE = (_, issue, type, {data}) => {
-  ADD_ISSUE(_, issue, 'partner', JSON.parse(data));
-};
-
-const NEW_ISSUE = (_, issues) => {
-  const {message} = issues.input,
-        data = {time: new Date().getTime(), message, creator: _.signaler.currentId.toString()};
-
-  ADD_ISSUE(_, issues, 'self', data);
-
-  issues.channel.send(JSON.stringify(data));
-  issues.input.message = '';
-};
-
-const ADD_ISSUE = (_, issues, type, data) => {
-  const issue = {id: issues.issues.length + 1, messages: [data]};
-
-  issues.messages.push(issue);
-  issues.issues.push(issue);
-
-  SHOW_ISSUE(_, issues, issue);
-};
-
-const ISSUES_MESSAGE_INPUT = (_, issues, {target: {value}}) => {
-  issues.input.message = value;
-};
-
-const SHOW_ISSUE = (_, issues, issue) => {
-  issues.issueDetail = issue;
-};
-
-const CHAT_CHANNEL = createChannelHandler('chat', ADD_CHAT_MESSAGE, (partner, channel) => ({partner, channel, start: new Date().getTime(), messages: [], input: {message: undefined}}));
-
-const ISSUES_CHANNEL = createChannelHandler('issues', PROCESS_ISSUE_MESSAGE, (partner, channel) => ({partner, channel, issues: [], messages: [], input: {message: undefined}}));
 
 
 // jshint ignore:start
@@ -212,9 +288,13 @@ const App = ({status: {started}, signaler, conversations, issues}, {mutation}) =
 // jshint ignore:end
 
 // jshint ignore:start
-const Conversation = ({conversation: {partner, channels: {chat, issues}}}, {partners, mutation}) => (
-  <conversation>
-    <partner-info><id>{renderShortID(partner)}</id><connected-at>Connected At: {new Date(partners[partner.toString()]['connectedAt']).toString()}</connected-at></partner-info>
+const Conversation = ({conversation: {partner, context, channels: {chat, issues}}}, {partners, mutation}) => (
+  <conversation className={context.iceConnectionState}>
+    <partner-info>
+      <id>{renderShortID(partner)}</id>
+      {context.discoveredAt ? <discovered-at>Discovered At: {new Date(context.discoveredAt).toString()}</discovered-at> : undefined}
+      {context.connectedAt ? <connected-at>Connected At: {new Date(context.connectedAt[0]).toString()}</connected-at> : context.iceConnectionState}
+    </partner-info>
     <channels>
       {chat ? <Chat chat={chat} /> : undefined}
       {issues ? <Issues issues={issues} /> : undefined}
