@@ -4,6 +4,21 @@ import createChannelHandler from './createChannelHandler';
 
 const ISSUES_CHANNEL_NAME = 'issues';
 
+const ISSUES_CHANNEL =
+  createChannelHandler(
+    ISSUES_CHANNEL_NAME,
+    PROCESS_ISSUE_MESSAGE,
+    (partner, channel) =>
+      ({
+        partner,
+        channel,
+        issues: [],
+        messages: [],
+        input: {
+          message: undefined
+        }
+      }));
+
 const {
   PROCESS_ISSUE_MESSAGE,
   NEW_ISSUE,
@@ -77,6 +92,5 @@ const Issue = ({issue: {id, messages}}) => (
 );
 // jshint ignore:end
 
-const ISSUES_CHANNEL = createChannelHandler(ISSUES_CHANNEL_NAME, PROCESS_ISSUE_MESSAGE, (partner, channel) => ({partner, channel, issues: [], messages: [], input: {message: undefined}}));
 
 export {Issues, ISSUES_CHANNEL, ISSUES_CHANNEL_NAME};
