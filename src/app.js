@@ -5,6 +5,8 @@ import server from './server';
 import {Chat, CHAT_CHANNEL, CHAT_CHANNEL_NAME} from './chat';
 import {Issues, ISSUES_CHANNEL, ISSUES_CHANNEL_NAME} from './issues';
 
+import {Conversation} from './conversation';
+
 import {Console, ADD_LOG_MESSAGE} from './console';
 
 const state = getState();
@@ -210,21 +212,7 @@ const App = ({status: {started}, signaler, conversations, issues}, {mutation}) =
 );
 // jshint ignore:end
 
-// jshint ignore:start
-const Conversation = ({conversation: {partner, context, channels: {chat, issues}}}, {partners, mutation}) => (
-  <conversation className={context.iceConnectionState}>
-    <partner-info>
-      <id>{renderShortID(partner)}</id>
-      {context.discoveredAt ? <discovered-at>Discovered At: {new Date(context.discoveredAt).toString()}</discovered-at> : undefined}
-      {context.connectedAt ? <connected-at>Connected At: {new Date(context.connectedAt[0]).toString()}</connected-at> : context.iceConnectionState}
-    </partner-info>
-    <channels>
-      {chat ? <Chat chat={chat} /> : undefined}
-      {issues ? <Issues issues={issues} /> : undefined}
-    </channels>
-  </conversation>
-);
-// jshint ignore:end
+
 
 
 // jshint ignore:start
