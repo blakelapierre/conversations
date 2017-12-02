@@ -2,9 +2,10 @@ import { h } from 'preact-cycle';
 
 import {Chat, CHAT_CHANNEL, CHAT_CHANNEL_NAME} from './chat';
 import {Issues, ISSUES_CHANNEL, ISSUES_CHANNEL_NAME} from './issues';
+import {Game, GAME_CHANNEL, GAME_CHANNEL_NAME} from './game';
 
 // jshint ignore:start
-const Conversation = ({conversation: {partner, context, channels: {chat, issues}}}, {partners, mutation}) => (
+const Conversation = ({conversation: {partner, context, channels: {chat, issues, game}}}, {partners, mutation}) => (
   <conversation className={context.iceConnectionState}>
     <partner-info>
       <id>{renderShortID(partner)}</id>
@@ -15,12 +16,13 @@ const Conversation = ({conversation: {partner, context, channels: {chat, issues}
     <channels>
       {chat ? <Chat chat={chat} /> : undefined}
       {issues ? <Issues issues={issues} /> : undefined}
+      {game ? <Game game={game} /> : undefined}
     </channels>
   </conversation>
 );
 // jshint ignore:end
 
-export {Conversation, CHAT_CHANNEL, CHAT_CHANNEL_NAME, ISSUES_CHANNEL, ISSUES_CHANNEL_NAME};
+export {Conversation, CHAT_CHANNEL, CHAT_CHANNEL_NAME, ISSUES_CHANNEL, ISSUES_CHANNEL_NAME, GAME_CHANNEL, GAME_CHANNEL_NAME};
 
 function renderShortID(id) {
   return `${id.slice(0, 3).toString()}..${id.slice(id.length - 4, id.length - 1).toString()}`;
