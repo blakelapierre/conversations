@@ -28,7 +28,14 @@ const {
 
         time.partnerClock = parsed.time + offset;
 
-        time.messages.unshift({type: 'pingpong', time: new Date().getTime(), data: {rtt, offset, latency, partnerClock: time.partnerClock, localClock: now, diff: now - time.partnerClock}});
+        time.rtt = rtt;
+        time.latency = latency;
+        time.offset = offset;
+
+        time.maxLatency = Math.max(time.maxLatency || 0, time.latency);
+        time.maxOffset = Math.max(time.maxOffset || 0, time.offset);
+
+        time.messages.unshift({type: 'pingpong', time: new Date().getTime(), data: {rtt, offset, latency, adjustedPartnerClock: time.partnerClock, localClock: now, diff: now - time.partnerClock}});
       }
     }
   },
@@ -52,7 +59,9 @@ const TIME_CHANNEL =
         partner,
         channel,
         start: new Date().getTime(),
-        messages: []
+        messages: [],
+        latency: 0,
+        maxLatency: 0
       }));
 
 let interval;
@@ -66,20 +75,30 @@ function ensurePing(time, mutation) {
 const Time = ({time}, {mutation}) => (
   <time>
     {ensurePing(time, mutation)}
-    Time
+    <info>
+      <span>Latency: {time.latency.toFixed(1)} ms ({time.maxLatency.toFixed(1)} ms max)</span>
+      <BinnedSeries bins={5} max={time.maxLatency} valueSelector={({data}) => data.latency} data={time.messages.slice(0, 10).reverse()} />
+    </info>
     <Messages messages={time.messages} start={time.start} />
   </time>
 );
 // jshint ignore: end
 
 // jshint ignore:start
+const BinnedSeries = ({bins, data, max, valueSelector}) => (
+  <binned-series>
+    {data.map(item => <point style={{'top': 100 * (1 - (1 / bins) - (1 / bins) * Math.floor(valueSelector(item) / (max / bins))) + '%'}}></point>)}
+  </binned-series>
+);
+// jshint ignore: end
+
+// jshint ignore:start
 const Messages = ({messages, start}) => (
   <messages>
-    {messages.map(({type, data, time}) => (
+    {messages.slice(0, 2).map(({type, data, time}) => (
       <message className={type}>
         <container className={`message-time-${5 * Math.round(100 * (time - start) / (new Date().getTime() - start) / 5)}`}>
           <data>{JSON.stringify(data)}</data>
-          <time>{new Date(time).toString()}</time>
         </container>
       </message>
     ))}

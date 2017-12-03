@@ -158,6 +158,45 @@ App {
           }
         }
 
+        time {
+          max-height: 5em;
+
+          font-size: 0.6em;
+
+          overflow-y: auto;
+
+          info {
+            display: flex;
+
+            justify-content: space-between;
+
+            binned-series {
+              position: relative;
+
+              height: 1em;
+
+              display: flex;
+
+              background: rgba(0, 0, 0, 0.25);
+
+              point {
+                position: relative;
+
+                height: calc(1em / 5);
+                width: 0.25em;
+
+                background-color: #090;
+              }
+            }
+          }
+
+          messages {
+            display: flex;
+
+            flex-direction: column;
+          }
+        }
+
         game {
           display: flex;
           flex-direction: column;
@@ -209,9 +248,23 @@ App {
 
                   align-items: center;
 
-                  &.r resource-bar { background-color: #a00; }
-                  &.g resource-bar { background-color: #0a0; }
-                  &.b resource-bar { background-color: #00a; }
+                  &.r {
+                    background-color: rgba(255, 0, 0, 0.2);
+
+                    resource-bar { background-color: #a00; }
+                  }
+
+                  &.g {
+                    background-color: rgba(0, 255, 0, 0.2);
+
+                    resource-bar { background-color: #0a0; }
+                  }
+
+                  &.b {
+                    background-color: rgba(0, 0, 255, 0.2);
+
+                    resource-bar { background-color: #00a; }
+                  }
 
                   resource-value {
                     display: inline;
