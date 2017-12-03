@@ -237,11 +237,7 @@ const Partner = ({name, data}, {mutation}) => (
 );
 // jshint ignore:end
 
-render(
-  // jshint ignore:start
-  App, state, document.body
-  // jshint ignore:end
-);
+render(App, state, document.body);
 
 function stringifyState(state) {
   return JSON.stringify(state, (k, v) => {

@@ -162,29 +162,115 @@ App {
           display: flex;
           flex-direction: column;
 
-          canvas {
-            position: relative;
+          start-game {
+            display: flex;
 
-            width: 100%;
+            justify-content: center;
+            align-items: center;
           }
 
-          messages {
-            word-break: break-all;
-          }
-        }
+          game-area {
+            canvas {
+              position: relative;
 
-        message {
-          display: flex;
-          flex-direction: column;
+              width: 100%;
 
-          time {
-            color: #555;
+              cursor: pointer;
 
-            font-size: 0.55em;
-          }
+              user-select: none;
 
-          data {
+              -webkit-tap-highlight-color: transparent;
+            }
 
+            stats {
+              display: flex;
+
+              justify-content: space-between;
+
+              player-stats {
+                flex: 1 0 auto;
+
+                display: flex;
+
+                flex-direction: column;
+
+                font-size: 0.6em;
+
+                &:first-child {
+                  direction: rtl;
+                }
+
+                resource-container {
+                  flex: 1 0 auto;
+
+                  position: relative;
+
+                  display: flex;
+
+                  align-items: center;
+
+                  &.r resource-bar { background-color: #a00; }
+                  &.g resource-bar { background-color: #0a0; }
+                  &.b resource-bar { background-color: #00a; }
+
+                  resource-value {
+                    display: inline;
+
+                    align-items: center;
+
+                    margin: 0 0.25em;
+
+                    // font-weight: bold;
+
+                    line-height: 1em;
+
+                    color: #ff0;
+                    text-shadow: 0px 0px 1.5px #000;
+
+                    z-index: 2;
+                  }
+
+                  resource-bar {
+                    position: absolute;
+
+                    display: block;
+
+                    height: 1em;
+
+                    max-width: 100%;
+                  }
+                }
+              }
+            }
+
+            message-area {
+              display: flex;
+
+              justify-content: space-between;
+
+              messages {
+                word-break: break-all;
+
+                message {
+                  display: flex;
+                  flex-direction: column;
+
+                  time {
+                    color: #555;
+
+                    font-size: 0.55em;
+                  }
+
+                  data {
+
+                  }
+                }
+              }
+            }
+
+            button {
+              user-select: none;
+            }
           }
         }
 
