@@ -17,6 +17,10 @@ const Player = (color) => ({
 
 class Entity {
   constructor({x, y, vx, vy, color, gameState}) {
+    this.init(x, y, vx, vy, color, gameState);
+  }
+
+  init(x, y, vx, vy, color, gameState) {
     this.x = x;
     this.y = y;
     this.vx = vx;
@@ -26,15 +30,36 @@ class Entity {
 
     this.vxp = vx / gameState.ticksPerSecond;
     this.vyp = vy / gameState.ticksPerSecond;
+
+    delete this.dontDraw;
+    delete this.return;
   }
 
   update() {
     this.x += this.vxp;
     this.y += this.vyp;
 
-    this.x = Math.min(Math.max(this.x, 0), this.gameState.worldSize.x - 1);
-    this.y = Math.min(Math.max(this.y, 0), this.gameState.worldSize.y - 1);
+    // this.x = Math.min(Math.max(this.x, 0), this.gameState.worldSize.x - 1);
+    // this.y = Math.min(Math.max(this.y, 0), this.gameState.worldSize.y - 1);
+
+    if (this.x >= this.gameState.worldSize.x ||
+        this.y >= this.gameState.worldSize.y) {
+      this.return = true;
+      this.dontDraw = true;
+    }
   }
+}
+
+function createEntity(gameState, x, y, vx, vy, color) {
+  const entity = gameState.entityPool.pop();
+
+  if (entity) {
+    console.log('using pool entity');
+    entity.init(x, y, vx, vy, color, gameState);
+    gameState.entities.push(entity);
+    return entity;
+  }
+  else return gameState.entities.push(new Entity({x, y, vx, vy, color, gameState}));
 }
 
 const {
@@ -92,14 +117,13 @@ const {
           if (gameState.players[playerIndex].resources.r.value > 1) {
             const {x, y} = data;
 
-            gameState.entities.push(new Entity({
+            createEntity(gameState,
               x,
               y,
-              vx: playerIndex === 0 ? 3 : -3,
-              vy: 0,
-              color: gameState.players[playerIndex].color,
-              gameState
-            }));
+              playerIndex === 0 ? 3 : -3,
+              0,
+              gameState.players[playerIndex].color
+            );
 
             gameState.players[playerIndex].commands.push(message);
 
@@ -111,7 +135,7 @@ const {
   },
 
   NEW_FRAME: (_, game) => {
-    console.log('new frame');
+    // console.log('new frame');
   },
 
   CANVAS_CLICK: (_, game, event) => {
@@ -134,6 +158,16 @@ function runGame(gameState, updateUI) {
     gameState.tick++;
 
     gameState.entities.forEach(entity => entity.update());
+
+    for (let i = gameState.entities.length - 1; i >= 0;  i--) {
+      const entity = gameState.entities[i];
+
+      if (entity.return) {
+        gameState.entities.splice(i, 1);
+        gameState.entityPool.push(entity);
+      }
+      else entity.update();
+    }
 
     // gameState.entities.forEach(entity => {
     //   entity.x += entity.vxp;
@@ -177,6 +211,7 @@ const GAME_CHANNEL =
         gameState: {
           tick: 0,
           entities: [],
+          entityPool: [],
           players: [],
           ticksPerSecond: 60
         }
@@ -263,10 +298,12 @@ class Canvas extends Component {
     this.canvasContext.fillStyle = 'rgb(0, 0, 0)';
     this.canvasContext.fillRect(0, 0, 500, 250);
 
-    this.game.gameState.entities.forEach(({x, y, color}) => {
-      this.canvasContext.fillStyle = color;
-      this.canvasContext.fillRect(x, y, 1, 1);
-    })
+    this.game.gameState.entities.forEach(({x, y, color, dontDraw}) => {
+      if (!dontDraw) {
+        this.canvasContext.fillStyle = color;
+        this.canvasContext.fillRect(x, y, 1, 1);
+      }
+    });
 
     requestAnimationFrame(this.animate.bind(this));
   }

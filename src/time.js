@@ -22,7 +22,7 @@ const {
               offset = now - parsed.time,
               latency = (now - parsed.yours) / 2;
 
-        time.partnerClock = parsed.time + offset;
+        time.partnerClock = parsed.time + latency;
 
         time.rtt = rtt;
         time.latency = latency;
