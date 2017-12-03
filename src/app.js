@@ -6,7 +6,8 @@ import {
   Conversation,
   CHAT_CHANNEL, CHAT_CHANNEL_NAME,
   ISSUES_CHANNEL, ISSUES_CHANNEL_NAME,
-  GAME_CHANNEL, GAME_CHANNEL_NAME
+  GAME_CHANNEL, GAME_CHANNEL_NAME,
+  TIME_CHANNEL, TIME_CHANNEL_NAME
 } from './conversation';
 
 import {Console, ADD_LOG_MESSAGE} from './console';
@@ -136,6 +137,7 @@ function createActions(mutation) {
       'ice-gathering-state': [ICE_GATHERING_STATE_CHANGE],
       'chat-channel-open': [CHAT_CHANNEL, mutation],
       'issues-channel-open': [ISSUES_CHANNEL, mutation],
+      'time-channel-open': [TIME_CHANNEL, mutation],
       'game-channel-open': [GAME_CHANNEL, mutation]
     }
   });
@@ -175,7 +177,7 @@ const {
 
   CONNECT_TO_PARTNER:
     (_, name, mutation) =>
-      connectTo(new Uint8Array(name.split(',').map(n => parseInt(n, 10))), [CHAT_CHANNEL_NAME, ISSUES_CHANNEL_NAME, GAME_CHANNEL_NAME], createActions(mutation), undefined),
+      connectTo(new Uint8Array(name.split(',').map(n => parseInt(n, 10))), [CHAT_CHANNEL_NAME, ISSUES_CHANNEL_NAME, TIME_CHANNEL_NAME, GAME_CHANNEL_NAME], createActions(mutation), undefined),
 
   CONNECT_TO_INPUT: (_, {target: {value}}) => {
     _.input.connectTo = value;
