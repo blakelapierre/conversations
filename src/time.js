@@ -10,11 +10,9 @@ const {
   SEND_TIME_MESSAGE
 } = {
   ADD_TIME_MESSAGE: (_, time, type, {data}) => {
-    // time.messages.unshift({type, data, time: new Date().getTime()});
-
     if (type === 'partner') {
       const parsed = JSON.parse(data);
-      console.log('partner: ', );
+
       if (parsed.type === 'ping') {
         time.channel.send(JSON.stringify({type: 'pong', time: new Date().getTime(), yours: parsed.time}));
       }
@@ -23,8 +21,6 @@ const {
               rtt = now - parsed.yours,
               offset = now - parsed.time,
               latency = (now - parsed.yours) / 2;
-
-        console.log('rtt', now - parsed.yours);
 
         time.partnerClock = parsed.time + offset;
 

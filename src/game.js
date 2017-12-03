@@ -78,6 +78,7 @@ const {
             Player('rgb(255, 64, 64')
           ];
           gameState.localPlayer = who === 'self' ? 0 : 1;
+          gameState.remotePlayer = who === 'self' ? 1 : 0;
 
           runGame(gameState, NEW_FRAME); // should pass mutation?
           break;
@@ -86,21 +87,23 @@ const {
     else {
       switch (type) {
         case 'spawn':
-          if (gameState.players[who === 'self' ? 0 : 1].resources.r.value > 1) {
+          const playerIndex = who === 'self' ? gameState.localPlayer : gameState.remotePlayer;
+
+          if (gameState.players[playerIndex].resources.r.value > 1) {
             const {x, y} = data;
 
             gameState.entities.push(new Entity({
               x,
               y,
-              vx: who === 'self' ? 3 : -3,
+              vx: playerIndex === 0 ? 3 : -3,
               vy: 0,
-              color: who === 'self' ? gameState.players[0].color : gameState.players[1].color,
+              color: gameState.players[playerIndex].color,
               gameState
             }));
 
-            gameState.players[who === 'self' ? 0 : 1].commands.push(message);
+            gameState.players[playerIndex].commands.push(message);
 
-            gameState.players[who === 'self' ? 0 : 1].resources.r.value--;
+            gameState.players[playerIndex].resources.r.value--;
           }
           break;
       }
