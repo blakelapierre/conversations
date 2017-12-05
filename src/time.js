@@ -7,7 +7,9 @@ const TIME_CHANNEL_NAME = 'time';
 // jshint ignore:start
 const {
   ADD_TIME_MESSAGE,
-  SEND_TIME_MESSAGE
+  SEND_TIME_MESSAGE,
+
+  TOGGLE_LATENCY_LOG
 } = {
   ADD_TIME_MESSAGE: (_, time, type, {data}) => {
     if (type === 'partner') {
@@ -42,6 +44,10 @@ const {
     ADD_TIME_MESSAGE(_, time, 'self', {data: message});
 
     time.channel.send(JSON.stringify(message));
+  },
+
+  TOGGLE_LATENCY_LOG: (_, time) => {
+    time.showLog = !time.showLog;
   }
 };
 // jshint ignore: end
@@ -72,10 +78,14 @@ const Time = ({time}, {mutation}) => (
   <time>
     {ensurePing(time, mutation)}
     <info>
-      <span>Latency: {time.latency.toFixed(1)} ms ({time.maxLatency.toFixed(1)} ms max)</span>
+    <name className={{'show-log': time.showLog}} onClick={mutation(TOGGLE_LATENCY_LOG, time)}><toggle>{'v'}</toggle>Latency</name>
       <BinnedSeries bins={5} max={time.maxLatency} valueSelector={({data}) => data.latency} data={time.messages.slice(0, 10).reverse()} />
+      <latency>
+        <max-latency>{time.maxLatency.toFixed(1)}ms max</max-latency>
+        <value>{time.latency.toFixed(1)}ms</value>
+      </latency>
     </info>
-    <Messages messages={time.messages} start={time.start} />
+    {time.showLog ? <Messages messages={time.messages} start={time.start} /> : undefined}
   </time>
 );
 // jshint ignore: end

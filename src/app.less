@@ -170,7 +170,31 @@ App {
           info {
             display: flex;
 
-            justify-content: space-between;
+            justify-content: flex-end;
+            align-items: center;
+
+            name {
+              padding: 0.05em;
+
+              font-size: 1.25em;
+
+              cursor: pointer;
+
+              &.show-log {
+                background-color: rgba(192, 192, 0, 0.05);
+                border: solid 1px rgba(0, 0, 0, 0.25);
+
+                toggle {
+                  transform: rotateX(180deg);
+
+                  transform-origin: 0 25%;
+                }
+              }
+
+              toggle {
+                font-size: 0.75em;
+              }
+            }
 
             binned-series {
               position: relative;
@@ -190,12 +214,35 @@ App {
                 background-color: #090;
               }
             }
+
+            latency {
+              display: flex;
+              flex-direction: column;
+
+              justify-content: flex-end;
+              align-items: center;
+
+              font-size: 1em;
+
+              value {
+                display: block;
+
+              }
+
+              max-latency {
+                display: block;
+
+                font-size: 0.8em;
+              }
+            }
           }
 
           messages {
             display: flex;
 
             flex-direction: column;
+
+            align-items: flex-end;
           }
         }
 
