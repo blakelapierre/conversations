@@ -178,21 +178,31 @@ App {
 
               font-size: 1.25em;
 
+              border: solid 1px transparent;
+
               cursor: pointer;
+
+              user-select: none;
 
               &.show-log {
                 background-color: rgba(192, 192, 0, 0.05);
                 border: solid 1px rgba(0, 0, 0, 0.25);
 
                 toggle {
-                  transform: rotateX(180deg);
-
-                  transform-origin: 0 25%;
+                  transform: rotateX(-180deg);
                 }
               }
 
               toggle {
+                display: inline-block;
+
                 font-size: 0.75em;
+
+                transform: rotateX(0deg);
+
+                transition: transform 0.25s linear;
+
+                transform-origin: 0 25%;
               }
             }
 

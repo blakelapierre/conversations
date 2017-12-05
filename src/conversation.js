@@ -16,9 +16,9 @@ const Conversation = ({conversation: {partner, context, channels: {chat, issues,
       {context.disconnectedAt ? <disconnected-at>Disconnected At: {new Date(context.disconnectedAt[0]).toString()}</disconnected-at> : undefined}
     </partner-info>
     <channels>
+      {time ? <Time time={time} /> : undefined}
       {chat ? <Chat chat={chat} /> : undefined}
       {issues ? <Issues issues={issues} /> : undefined}
-      {time ? <Time time={time} /> : undefined}
       {game ? <Game game={game} /> : undefined}
     </channels>
   </conversation>

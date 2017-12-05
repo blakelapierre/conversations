@@ -69,7 +69,7 @@ const Messages = ({messages, start}) => (
       <message className={type}>
         <container className={`message-time-${5 * Math.round(100 * (time - start) / (new Date().getTime() - start) / 5)}`}>
           <data>{data}</data>
-          <time>{new Date(time).toString()}</time>
+          <time>{new Date(time).toISOString()}</time>
         </container>
       </message>
     ))}
