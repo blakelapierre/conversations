@@ -1,0 +1,5 @@
+#!/bin/sh
+
+cp ../../debug/secrets/debug-localhost ./secrets -rf
+
+docker build -t conversations/site .
