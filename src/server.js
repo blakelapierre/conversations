@@ -12,8 +12,9 @@
 //   }
 // }
 
-const SIGNALER_IP = '192.168.0.105',
-      SIGNALER_PORT = 8080;
+const SIGNALER_IP = 'localhost', //'192.168.0.105',
+      SIGNALER_PORT = 443,
+      HOST = window.location.host; //`${SIGNALER_IP}:${SIGNALER_PORT}`; //8080;
 
 /*
 actions:
@@ -24,7 +25,8 @@ actions:
 export default function connect(id, actions) {
   if (WebSocket && window.crypto) {
 
-    const socket = new WebSocket(`ws://${SIGNALER_IP}:${SIGNALER_PORT}`);
+    // const socket = new WebSocket(`ws://${SIGNALER_IP}:${SIGNALER_PORT}`);
+    const socket = new WebSocket(`wss://${HOST}/signaler`);
 
     handle(socket, id, actions);
 
