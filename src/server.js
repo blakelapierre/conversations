@@ -14,7 +14,7 @@
 
 const SIGNALER_IP = 'localhost', //'192.168.0.105',
       SIGNALER_PORT = 443,
-      HOST = window.location.host; //`${SIGNALER_IP}:${SIGNALER_PORT}`; //8080;
+      HOST = 'p2p.ninja'; // HOST = window.location.host; //`${SIGNALER_IP}:${SIGNALER_PORT}`; //8080;
 
 /*
 actions:
