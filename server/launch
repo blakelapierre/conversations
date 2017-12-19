@@ -1,0 +1,5 @@
+#!/bin/sh
+
+docker run -d --name www -p 80:80 conversations/www
+docker run -d --name signaler -p 8080:8080 instantchat/signaler-haskell
+docker run -d --name site -p 443:443 --link www --link signaler conversations/site
