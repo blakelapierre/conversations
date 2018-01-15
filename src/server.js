@@ -127,9 +127,9 @@ function handle(socket, id, actions) {
   });
 
   socket.addEventListener('close', () => {
-    actions['signal']['connection-state']('Not Connected');
+    actions['signal']['connection-state']('disconnected');
 
-    setTimeout(() => connect(actions), 5000);
+    setTimeout(connect.bind(undefined, id, actions), 5000);
   });
 
   function processPartnerMessage(partner, data) {

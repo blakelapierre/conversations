@@ -8,10 +8,108 @@ body {
 
   margin: 0;
   padding: 0;
+
+  background-color: #000;
+
+  color: #ccc;
 }
 
-App {
+app {
+  flex: 1 1 auto;
+  display: flex;
+
   overflow-y: auto;
+
+  transition: background-color 1s ease-in-out;
+
+  &.signaler-connected {
+    background-color: rgba(225, 255, 225, 0.2);
+
+    init {
+      opacity: 0;
+    }
+  }
+
+  init {
+    flex: 1 1 auto;
+
+    display: flex;
+
+    justify-content: center;
+    align-items: center;
+
+    transition: opacity 2s ease-in-out;
+  }
+
+  signaler-connected {
+    flex: 1 1 auto;
+
+    display: flex;
+
+    partner-manager {
+      flex: 1 1 auto;
+
+      display: flex;
+      flex-direction: column;
+
+      align-items: center;
+      justify-content: space-around;
+
+      partner-display {
+        flex: 0 1 auto;
+
+        display: flex;
+        display-wrap: wrap;
+
+        justify-content: center;
+
+        font-family: monospace;;
+
+        partner {
+          display: block;
+
+          padding: 1em;
+
+          max-width: 15rem;
+
+          word-break: break-all;
+
+          text-align: justify;
+
+          cursor: pointer;
+
+          font-size: 0.66em;
+
+          border: solid 1px #777;
+
+          &:hover {
+            background-color: rgba(0, 0, 0, 0.25);
+            border: solid 1px #999;
+          }
+
+          short {
+            display: block;
+
+            padding: 0.25em;
+
+            font-size: 1rem;
+          }
+        }
+      }
+
+      add-new-partner {
+        flex: 0 0 auto;
+
+        display: flex;
+        flex-direction: column;
+
+        form {
+          display: flex;
+          flex-direction: column;
+        }
+      }
+    }
+  }
 
   id {
     font-size: 0.7em;

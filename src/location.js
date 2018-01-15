@@ -44,6 +44,23 @@ const {
     ADD_LOCATION_MESSAGE(_, time, 'self', {data: message});
 
     time.channel.send(JSON.stringify(message));
+  },
+
+  POSITION_RECEIVED: (_, location, {timestamp, coords: {latitude, longitude, altitude, accuracy, altitudeAccuracy, heading, speed}}) => {
+    location.positions.unshift([new Date().getTime(), {timestamp, coords: {latitude, longitude, altitude, accuracy, altitudeAccuracy, heading, speed}}]);
+
+    location.yourPosition[0] = latitude;
+    location.yourPosition[1] = longitude;
+
+    location.distance
+
+    delete location.error;
+  },
+
+  POSITION_ERROR: (_, location, error) => {
+    location.errors.unshift([new Date().getTime(), {code: error.code, message: error.message}]);
+
+    location.error = location.errors[0];
   }
 };
 // jshint ignore: end
@@ -77,6 +94,15 @@ if (window.navigator.geolocation) {
   window.navigator.geolocation.watchPosition(
     position => console.log('position', position),
     error => console.log('position error!', error));
+}
+
+let watchID;
+function ensureGeolocationWatch(location, mutation) {
+  if (watchID === undefined) {
+    watchID = window.navigator.geolocation.watchPosition(
+      position => mutation(POSITION_RECEIVED, location),
+      error => mutation(POSITION_ERROR, location));
+  }
 }
 
 // jshint ignore:start

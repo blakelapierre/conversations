@@ -27,15 +27,21 @@ function getState() {
       if (k === 'currentId') return new Uint8Array(v);
       return v;
     });
+
+    Object.values(savedState.partners).forEach(partner => partner.messages = partner.messages || []);
   }
 
   const state = {
     status: {
       started: false
     },
+    currentState: 'init',
     signaler: {
       currentId: savedState.currentId,
       status: 'Not Connected'
+    },
+    info: {
+      name: ''
     },
     partners: savedState.partners,
     input: {
@@ -73,6 +79,14 @@ function createActions(mutation) {
   } = {
     SIGNAL_CONNECTION_STATE_CHANGE: (_, state) => {
       _.signaler.connectionState = state;
+
+      if (state === 'connected') {
+        _.signaler.connected = new Date().getTime();
+        _.currentState = 'signaler-connected';
+      }
+      else if (state === 'disconnected') {
+        _.signaler.connected = new Date().getTime();
+      }
     },
 
     PARTNER_MESSAGE: (_, [partnerId, message]) => {
@@ -85,7 +99,8 @@ function createActions(mutation) {
       if (context === undefined) {
         context = _.partners[id] = {
           id,
-          discoveredAt: new Date().getTime()
+          discoveredAt: new Date().getTime(),
+          messages: []
         };
 
         saveState({currentId: _.signaler.currentId, partners: _.partners});
@@ -94,6 +109,8 @@ function createActions(mutation) {
       if (!_.conversations[id]) {
         _.conversations[id] = (_.conversations[id] || {partner: partnerId, context, channels: {}});
       }
+
+      (context.messages = context.messages || []).push(message);
 
       ADD_LOG_MESSAGE(_, `${renderShortID(partnerId)}: ${JSON.stringify(message)}`);
     },
@@ -161,7 +178,8 @@ const {
   CONNECT_TO,
   CONNECT_TO_PARTNER,
   CONNECT_TO_INPUT,
-  CLEAR_PARTNERS
+  CLEAR_PARTNERS,
+  NEW_PARTNER_INPUT
 } = {
   STARTED: _ => {
     _.status.started = true;
@@ -186,39 +204,113 @@ const {
   CLEAR_PARTNERS: (_) => {
     _.partners = {};
     saveState({currentId: _.signaler.currentId, partners: _.partners});
+  },
+
+  NEW_PARTNER_INPUT: (_, {target: {value}}) => {
+    _.input.connectTo = value;
+    return _;
   }
 };
 // jshint ignore:end
 
 
 // jshint ignore:start
-const App = ({status: {started}, signaler, conversations, issues}, {mutation}) => (
-  <app>
-    {!started ? mutation(START)(mutation) : undefined}
-
-    <conversations>
-      {Object.values(conversations).map(c => <Conversation conversation={c} />)}
-    </conversations>
-
-    <div>
-      <form onSubmit={mutation(CONNECT_TO, mutation)} action="javascript:" autoFocus>
-        Connect To: <input type="text" onInput={mutation(CONNECT_TO_INPUT)} />
-      </form>
-    </div>
-
-    <Partners />
-
-    <div>
-      Your ID: <id>{signaler.currentId.toString()}</id>
-    </div>
-
-    <Console />
+const App = (props) => (
+  <app className={`signaler-${props.signaler.connectionState}`}>
+    <StateRender {...props} />
   </app>
 );
 // jshint ignore:end
 
+// jshint ignore:start
+const StateRender = (props, state) => {
+  const {currentState, status: {started}} = props,
+        {mutation} = state;
 
+  if (!started) mutation(START)(mutation);
 
+  switch (currentState) {
+    case 'init':
+      return <Init {...props} / >;
+    case 'signaler-connected':
+      return <SignalerConnected {...props} />;
+  }
+}
+// jshint ignore:end
+
+// jshint ignore:start
+const Init = ({signaler: {connectionState}}, {mutation}) => (
+  <init>
+    {connectionState === 'connected' ? 'Connected to p2p.ninja/signal...' : 'Connecting to p2p.ninja/signal...'}
+  </init>
+);
+// jshint ignore:end
+
+// jshint ignore:start
+const SignalerConnected = ({}, {}) => (
+  <signaler-connected>
+    <PartnerManager />
+  </signaler-connected>
+);
+// jshint ignore:end
+
+// jshint ignore:start
+const PartnerManager = ({}, {}) => (
+  <partner-manager>
+    <PartnerDisplay />
+    <AddNewPartner />
+  </partner-manager>
+);
+// jshint ignore:end
+
+// jshint ignore:start
+const PartnerDisplay = (_, {partners, mutation}) => (
+  <partner-display>
+    {Object.keys(partners).map(name => (
+      <div onClick={mutation(CONNECT_TO_PARTNER, name, mutation)}>
+        <Partner name={name} data={partners[name]} />
+      </div>
+    ))}
+  </partner-display>
+);
+// jshint ignore:end
+
+// jshint ignore:start
+const AddNewPartner = ({}, {mutation}) => (
+  <add-new-partner>
+    <form onSubmit={mutation(CONNECT_TO, mutation)} action="javascript:" autoFocus>
+      <textarea onInput={mutation(NEW_PARTNER_INPUT)}></textarea>
+      <input type="submit" value="Add New Partner" />
+    </form>
+  </add-new-partner>
+);
+// jshint ignore:end
+
+// // jshint ignore:start
+// const App = ({status: {started}, signaler, conversations, issues}, {mutation}) => (
+//   <app>
+//     {!started ? mutation(START)(mutation) : undefined}
+
+//     <conversations>
+//       {Object.values(conversations).map(c => <Conversation conversation={c} />)}
+//     </conversations>
+
+//     <div>
+//       <form onSubmit={mutation(CONNECT_TO, mutation)} action="javascript:" autoFocus>
+//         Connect To: <input type="text" onInput={mutation(CONNECT_TO_INPUT)} />
+//       </form>
+//     </div>
+
+//     <Partners />
+
+//     <div>
+//       Your ID: <id>{signaler.currentId.toString()}</id>
+//     </div>
+
+//     <Console />
+//   </app>
+// );
+// // jshint ignore:end
 
 // jshint ignore:start
 const Partners = (_, {partners, mutation}) => (
@@ -233,8 +325,11 @@ const Partners = (_, {partners, mutation}) => (
 
 // jshint ignore:start
 const Partner = ({name, data}, {mutation}) => (
-  <partner>
-    {name}
+  <partner title={name}>
+    <short>{renderShortID(name.split(','))}</short>
+    <full>{name}</full>
+
+    {data.messages[-1]}
   </partner>
 );
 // jshint ignore:end
