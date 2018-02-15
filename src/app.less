@@ -82,6 +82,10 @@ App {
 
           display: block;
 
+          inputs {
+            display: flex;
+          }
+
           messages {
             display: flex;
             flex-direction: column;
@@ -90,7 +94,7 @@ App {
             overflow-y: auto;
 
             message {
-              flex: 0 0 auto;
+              flex: 0 1 auto;
 
               display: block;
 
@@ -112,6 +116,10 @@ App {
                   display: block;
 
                   word-break: break-word;
+                }
+
+                img {
+                  max-width: 100%;
                 }
               }
             }

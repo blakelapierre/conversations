@@ -11,7 +11,9 @@ const notificationSound =  new Audio("data:audio/wav;base64,//uQRAAAAWMSLwUIYAAs
 const {
   ADD_CHAT_MESSAGE,
   SEND_CHAT_MESSAGE,
-  CHAT_MESSAGE_INPUT
+  CHAT_MESSAGE_INPUT,
+  ITEM_DROPPED,
+  ADD_FILE
 } = {
   ADD_CHAT_MESSAGE: (_, chat, type, {data}) => {
     console.log('_', _);
@@ -32,6 +34,30 @@ const {
   CHAT_MESSAGE_INPUT: (_, chat, {target:{value}}) => {
     console.log('input', _);
     chat.input.message = value;
+  },
+
+  ITEM_DROPPED: (_, chat, event) => {
+    console.log('dropped', event);
+    event.preventDefault();
+  },
+
+  ADD_FILE: (_, chat) => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.addEventListener('change', ({target:{files}}) => {
+      console.log('files', files);
+
+      Array.prototype.forEach.call(files, file => {
+        const reader = new FileReader();
+        reader.addEventListener('load', ({target:{result}}) => {
+          ADD_CHAT_MESSAGE(_, chat, 'self', {data: result});
+
+          chat.channel.send(result);
+        });
+        reader.readAsDataURL(file);
+      });
+    });
+    fileInput.click();
   }
 };
 // jshint ignore: end
@@ -53,10 +79,13 @@ const CHAT_CHANNEL =
 
 // jshint ignore:start
 const Chat = ({chat}, {mutation}) => (
-  <chat>
-    <form onSubmit={mutation(SEND_CHAT_MESSAGE, chat)} action="javascript:" autoFocus>
-      <input type="text" value={chat.input.message} onInput={mutation(CHAT_MESSAGE_INPUT, chat)} placeholder="Type your chat message here..." />
-    </form>
+  <chat onDrop={mutation(ITEM_DROPPED, chat)} onDragOver={event => event.preventDefault()}>
+    <inputs>
+      <form onSubmit={mutation(SEND_CHAT_MESSAGE, chat)} action="javascript:" autoFocus>
+        <input type="text" value={chat.input.message} onInput={mutation(CHAT_MESSAGE_INPUT, chat)} placeholder="Type your chat message here..." />
+      </form>
+      <button onClick={mutation(ADD_FILE, chat)}>+</button>
+    </inputs>
     <Messages messages={chat.messages} start={chat.start} />
   </chat>
 );
@@ -68,7 +97,7 @@ const Messages = ({messages, start}) => (
     {messages.map(({type, data, time}) => (
       <message className={type}>
         <container className={`message-time-${5 * Math.round(100 * (time - start) / (new Date().getTime() - start) / 5)}`}>
-          <data>{data}</data>
+          {/^data:image\/png;base64,.*$/.test(data) ? <img src={data} /> :<data>{data}</data>}
           <time>{new Date(time).toISOString()}</time>
         </container>
       </message>
