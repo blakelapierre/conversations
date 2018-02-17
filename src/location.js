@@ -2,7 +2,7 @@ import { h } from 'preact-cycle';
 
 import createChannelHandler from './createChannelHandler';
 
-const LOCATION_CHANNEL_NAME = 'time';
+const LOCATION_CHANNEL_NAME = 'location';
 
 // jshint ignore:start
 const {
@@ -11,39 +11,20 @@ const {
 
   TOGGLE_LATENCY_LOG
 } = {
-  ADD_LOCATION_MESSAGE: (_, time, type, {data}) => {
+  ADD_LOCATION_MESSAGE: (_, location, type, {data}) => {
     if (type === 'partner') {
       const parsed = JSON.parse(data);
 
-      if (parsed.type === 'ping') {
-        time.channel.send(JSON.stringify({type: 'pong', time: new Date().getTime(), yours: parsed.time}));
-      }
-      else if (parsed.type === 'pong') {
-        const now = new Date().getTime(),
-              rtt = now - parsed.yours,
-              offset = now - parsed.time,
-              latency = (now - parsed.yours) / 2;
-
-        time.partnerClock = parsed.time + latency;
-
-        time.rtt = rtt;
-        time.latency = latency;
-        time.offset = offset;
-
-        time.maxLatency = Math.max(time.maxLatency || 0, time.latency);
-        time.maxOffset = Math.max(time.maxOffset || 0, time.offset);
-
-        time.messages.unshift({type: 'pingpong', time: new Date().getTime(), data: {rtt, offset, latency, adjustedPartnerClock: time.partnerClock, localClock: now, diff: now - time.partnerClock}});
-      }
+      console.log('location partner message', parsed);
     }
   },
 
-  SEND_LOCATION_MESSAGE: (_, time) => {
-    const message = {type: 'ping', time: new Date().getTime()};
+  SEND_LOCATION_MESSAGE: (_, location) => {
+    const message = {type: 'location', time: new Date().getTime()};
 
     ADD_LOCATION_MESSAGE(_, time, 'self', {data: message});
 
-    time.channel.send(JSON.stringify(message));
+    location.channel.send(JSON.stringify(message));
   }
 };
 // jshint ignore: end
@@ -62,13 +43,6 @@ const LOCATION_CHANNEL =
         yourLocation: [],
         distance: 0
       }));
-
-let interval;
-function ensurePing(time, mutation) {
-  if (!interval) {
-    interval = setInterval(mutation(SEND_LOCATION_MESSAGE, time), 1000);
-  }
-}
 
 window.addEventListener('devicemotion', event => console.log('devicemotion', event));
 window.addEventListener('deviceorientation', event => console.log('deviceorientation', event));

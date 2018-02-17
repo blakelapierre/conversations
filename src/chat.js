@@ -9,15 +9,27 @@ const notificationSound =  new Audio("data:audio/wav;base64,//uQRAAAAWMSLwUIYAAs
 
 // jshint ignore:start
 const {
+  PROCESS_CHAT_MESSAGE,
   ADD_CHAT_MESSAGE,
   SEND_CHAT_MESSAGE,
   CHAT_MESSAGE_INPUT,
   ITEM_DROPPED,
   ADD_FILE
 } = {
-  ADD_CHAT_MESSAGE: (_, chat, type, {data}) => {
-    console.log('_', _);
-    chat.messages.unshift({type, data, time: new Date().getTime()});
+  PROCESS_CHAT_MESSAGE: (_, chat, type, event) => {
+    const {data} = event;
+    try {
+      chat.buffer += data;
+      ADD_CHAT_MESSAGE(_, chat, type, JSON.parse(chat.buffer));
+      chat.buffer = '';
+    }
+    catch (e) {
+      console.log('chat process error; likely buffered msg', e);
+    }
+  },
+
+  ADD_CHAT_MESSAGE: (_, chat, type, {message, time, creator}) => {
+    chat.messages.unshift({type, data: message, sentTime: time, time: new Date().getTime(), creator});
     notificationSound.play();
   },
 
@@ -25,9 +37,15 @@ const {
     console.log('send');
     const {message} = chat.input;
 
-    ADD_CHAT_MESSAGE(_, chat, 'self', {data: message});
+    const data = {
+      time: new Date().getTime(),
+      message,
+      creator: _.signaler.currentId.toString()
+    };
 
-    chat.channel.send(message);
+    ADD_CHAT_MESSAGE(_, chat, 'self', data);
+
+    chat.channel.send(JSON.stringify(data));
     chat.input.message = '';
   },
 
@@ -50,9 +68,11 @@ const {
       Array.prototype.forEach.call(files, file => {
         const reader = new FileReader();
         reader.addEventListener('load', ({target:{result}}) => {
-          ADD_CHAT_MESSAGE(_, chat, 'self', {data: result});
+          const data = {message: result, time: new Date().getTime(), creator: _.signaler.currentId.toString()};
 
-          chat.channel.send(result);
+          ADD_CHAT_MESSAGE(_, chat, 'self', data);
+
+          chat.channel.send(JSON.stringify(data));
         });
         reader.readAsDataURL(file);
       });
@@ -65,7 +85,7 @@ const {
 const CHAT_CHANNEL =
   createChannelHandler(
     CHAT_CHANNEL_NAME,
-    ADD_CHAT_MESSAGE,
+    PROCESS_CHAT_MESSAGE,
     (partner, channel) =>
       ({
         partner,
@@ -74,7 +94,8 @@ const CHAT_CHANNEL =
         messages: [],
         input: {
           message: undefined
-        }
+        },
+        buffer: ''
       }));
 
 // jshint ignore:start
@@ -97,7 +118,7 @@ const Messages = ({messages, start}) => (
     {messages.map(({type, data, time}) => (
       <message className={type}>
         <container className={`message-time-${5 * Math.round(100 * (time - start) / (new Date().getTime() - start) / 5)}`}>
-          {/^data:image\/png;base64,.*$/.test(data) ? <img src={data} /> :<data>{data}</data>}
+          {/^data:image\/png;base64,.*$/.test(data) ? <img src={data} /> : <data>{data}</data>}
           <time>{new Date(time).toISOString()}</time>
         </container>
       </message>
